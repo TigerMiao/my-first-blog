@@ -308,3 +308,186 @@ Django 使用 “WSGI 协议”，它是用来服务 Python 网站的一个标�
         return render(request, 'blog/post_list.html', {})
     
 我们创建了一个名为post_list的函数，它接受request作为参数，并返回用render方法渲染模板 blog/post_list.html 而得到的结果。
+
+# 13. 创建一个模板
+模板保存在 blog/templates/blog 目录中。然后在目录中创建一个叫做 post_list.html 的文件。
+
+## 13.1 自定义模板
+下面是模板的一个完整实例：
+
+    <html>
+        <head>
+            <title>Django Girls blog</title>
+        </head>
+        <body>
+            <div>
+                <h1><a href="">Django Girls Blog</a></h1>
+            </div>
+
+            <div>
+                <p>published: 14.06.2014, 12:14</p>
+                <h2><a href="">My first post</a></h2>
+                <p>Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.</p>
+            </div>
+
+            <div>
+                <p>published: 14.06.2014, 12:14</p>
+                <h2><a href="">My second post</a></h2>
+                <p>Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut f.</p>
+            </div>
+        </body>
+    </html>
+
+## 13.2 部署
+
+### 13.2.1 提交并推送代码到GitHub
+首先，让我们看看上次部署之后什么文件改变了：
+
+    git status
+
+然后，告诉git包括此目录内所有更改：
+
+    git add --all .
+
+在我们上传所有文件前，让我们检查git将上传什么：
+
+    git status
+
+然后提交：
+
+    git commit -m "Changed the HTML for the site."
+
+做完这些，我们上传改动到GitHub：
+
+    git push
+
+### 13.2.2 把新代码来到PythonAnywhere
+
+* 打开 PythonAnywhere consoles page 并转到你的 Bash console（或启动一个新的）。然后，运行：
+
+    cd ~/my-first-blog
+    source myvenv/bin/activate
+    git pull
+    python manage.py collectstatic
+
+* 最后，跳到 Web tab 并点击对应你的 Web 应用程序的 Reload 。
+
+# 14. QuerySets（查询集）
+## 14.1 QuerySet是什么？
+从本质上说，QuerySet是给定模型的对象列表。QuerySet允许你从数据库中读取数据，对其进行筛选以及排序。
+
+## 14.2 Django shell
+在本地终端输入这个命令：
+
+    python manage.py shell
+
+## 14.3 所有对象
+在Django shell中输入下面的命令：
+
+    from blog.models import Post
+
+    Post.objects.all()
+
+## 14.4 创建对象
+创建一个新的Post对象的方法：
+
+    from django.contrib.auth.models import User
+
+    User.objects.all()
+    me = User.objects.get(username='admin')
+    Post.objects.create(author=me, title='Sample title', text="Test')
+    Post.objects.all()
+
+## 14.5 筛选对象
+QuerySets的很多一部分功能是对它们进行筛选。我们将使用filter，而不是all方法。我们需要将筛选条件作为方法的参数。比如，我们要查询指定作者的博客：
+
+    Post.objects.filter(author=me)
+
+或者我们想查询指定title的所有帖子：
+
+    Post.objects.filter(title__contains='title')
+
+**注** title与contains之间有两个下划线字符(_)。Django的ORM使用此语法来分割字段名称（"title"）和操作或筛选器（"contains"）。
+
+也可以获取一个所有已发布文章的列表。我们通过筛选所有含 published_date 为过去时间的文章来实现这个目的：
+
+    from django.utils import timezone
+
+    post = Post.objects.get(title="Sample title")
+    post.publish()
+    Post.objects.filter(published_date__lte=timezone.now())
+
+## 14.6 对象排序
+QuerySet 还允许排序结果集对象的列表。比如：按 create_date 字段排序：
+
+    Post.objects.order_by('created_date')
+
+我们也可以在开头添加 - 来反向排序：
+
+    Post.objects.order_by('-created_date')
+
+## 14.7 链式 QuerySets
+你可以通过链式调用连续组合QuerySets
+
+    Post.objects.filter(published_date__lte=timezone.now()).order_by('published_date')
+
+# 15. 模板中的动态数据
+views的作用是连接模型和模板。在视图函数 post_list 中我们获取我们想要显示的模型，并将它们传递到模板中去。所以基本上在视图中，我们决定什么（模型）将显示在模板中。
+
+现在是我们必须导入我们已经写在 models.py 里的模型的时候了。
+
+    from django.shortcuts import render
+    from django.utils import timezone
+    from .models import Post
+
+    def post_list(request):
+        posts = Post.objects.filter(published_date__lte=timezone.now()).order_by('published_date')
+        return render(request, 'blog/post_list.html', {'posts': posts})
+
+from 后面的点号意味着 当前目录 或 当前的应用程序。 因为 views.py 和 models.py 是在同一目录中，我们只需要使用 . 和 文件的名称（无 .py) 。 然后我们导入模型（Post).
+
+现在我们对已经发表并进行由 published_date排序的博客列表感兴趣。我们创建了QuerySet查询集变量：posts。并在最后将posts查询集传递给模板。
+
+render函数包含三个参数：request（请求）和模板文件 'blog/post_list.html'。最后一个参数是一个字典，字典中包含模板需要的参数，我们将posts查询集作为参数传给了模板。
+
+# 16. Django模板
+## 16.1 什么是模板标签？
+Django模板标签允许我们将Python之类的内容翻译成HTML。
+## 16.2 展现文章列表模板
+为了用模板标签在HTML中显示变量，我们使用两个大括号，并将变量包含在里面：
+
+    {{ posts }}
+
+修改模板文件 blog/templates/blog/post_list.html，并使用模板标签 {{ posts }}:
+
+    <div>
+        <h1><a href="/">Django Girls Blog</a></h1>
+    </div>
+
+    {% for post in posts %}
+        <div>
+            <p>published: {{ post.published_date }}</p>
+            <h1><a href="">{{ post.title }}</a></h1>
+            <p>{{ post.text|linebreaksbr }}</p>
+        </div>
+    {% endfor %}
+
+我们使用循环去遍历对象列表，所有的在{% for %} 和 {% endfor %} 之间的内容将会被Django对象列表中的每个对象所代替。我们还使用了 {{ post.title }} 和 {{ post.text }} 去访问Post模型中的属性。此外，|linebreaksbr是一个过滤器，使得行间隔变成段落。
+
+## 16.3 部署
+再次部署到PythonAnywhere。部署步骤如下：
+
+* 首先，将代码上传到GitHub
+
+    git status
+    git add --all .
+    git status
+    git commit -m "Modified templates to display posts from database."
+    git push
+
+* 然后，重新登录PythonAnywhere并进入Bash控制台，并运行：
+
+    cd my-first-blog
+    git pull
+
+* 最后，我们返回 Web tab 重新加载我们的应用程序， 此时我们应该可以看到更新后的程序运行情况了。
