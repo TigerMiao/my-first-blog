@@ -491,3 +491,151 @@ Django模板标签允许我们将Python之类的内容翻译成HTML。
     git pull
 
 * 最后，我们返回 Web tab 重新加载我们的应用程序， 此时我们应该可以看到更新后的程序运行情况了。
+
+# 17. CSS
+## 17.1 安装Bootstrap
+在文件blog/templates/blog/post_list.html中添加：
+
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+
+## 17.2 Django中的静态文件
+静态文件是指你所有的CSS文件和图片文件。
+
+我们在blog应用的目录下创建一个名为 static 的文件夹。Django会自动找到你应用文件夹目录下所有名字叫"static"的文件夹，并能够使用其中的静态文件。
+
+## 17.3 CSS文件
+在 static 的目录下创建一个新的目录称为 css。然后，在这个css目录里创建一个新的文件，称为 blog.css。
+
+blog/static/css/blog.css文件的代码如下：
+
+    h1 a {
+        color: #FCA205;
+    }
+
+我们还需要告诉我们的 HTML 模板，我们添加了一些 CSS。打开 blog/templates/blog/post_list.html 文件并在文件最开始的地方添加以下代码：
+
+    {% load staticfiles %}
+
+这里是为模板引入staticfiles相关的辅助方法。然后，在<head> 和 </head >之间，在Bootstrap的CSS文件的引导之后添加以下行：
+
+    <link rel="stylesheet" href="{% static 'css/blog.css' %}">
+
+文件应该像这样：
+
+    {% load staticfiles %}
+    <html>
+        <head>
+            <title>Django Girls blog</title>
+            <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+            <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+            <link rel="stylesheet" href="{% static 'css/blog.css' %}">
+        </head>
+        <body>
+            <div>
+                <h1><a href="/">Django Girls Blog</a></h1>
+            </div>
+
+            {% for post in posts %}
+                <div>
+                    <p>published: {{ post.published_date }}</p>
+                    <h1><a href="">{{ post.title }}</a></h1>
+                    <p>{{ post.text|linebreaksbr }}</p>
+                </div>
+            {% endfor %}
+        </body>
+    </html>
+
+然后，需要重新启动服务器：
+
+    python manage.py runserver
+
+# 18. 模板扩展
+模板扩展意味着你可以使用相同的HTML代码为你的不同网页共享。通过这种方法，当你想使用同样的信息或布局，或者你想改变某些模板内容时，你不必在每个文件中都重复着相同的代码。你仅仅只需要改变一个文件，而不是所有的。
+
+## 18.1 创建一个基础模板
+一个基础模板可以扩展到你网站的每一页。在blog/templates/blog/文件夹下创建一个base.html文件，从post_list.html中复制所有东西到base.html文件，然后在base.html中，替换你所有的 <body>(所有的在<body> 和 </body>之间的内容)像这样：
+
+    <body>
+        <div class="page-header">
+            <h1><a href="/">Django Girls Blog</a></h1>
+        </div>
+        <div class="content container">
+            <div class="row">
+                <div class="col-md-8">
+                {% block content %}
+                {% endblock %}
+                </div>
+            </div>
+        </div>
+    </body>
+
+我们在base.html中创建了一个block块，这个模板标签允许你在其中插入扩展自base.html的模板的HTML代码。
+
+然后编辑blog/templates/blog/post_list.html文件：
+
+    {% extends 'blog/base.html' %}
+
+    {% block content %}
+        {% for post in posts %}
+            <div class="post">
+                <div class="date">
+                    {{ post.published_date }}
+                </div>
+                <h1><a href="">{{ post.title }}</a></h1>
+                <p>{{ post.text|linebreaksbr }}</p>
+            </div>
+        {% endfor %}
+    {% endblock %
+
+这意味着我们在 post_list.html模板文件中扩展了 base.html 模板的内容。 并将所有内容置于{% block content %}和 {% endblock %}之间。
+
+# 19. 扩展应用
+## 19.1 创建一个模板链接，跳转到博文的内容页
+我们在博文列表的博文标题处添加一个链接用于跳转到该博文的详细页面。
+
+    <h1><a href="{% url 'blog:post_detail' pk=post.pk %}">{{ post.title }}</a></h1>
+
+blog.views.post_detail 是我们想创建的 post_detail 视图函数的路径。 blog 是我们应用的名字 (blog目录), views 是视图文件 views.py 的名字，最后一个部分 post_detail 是视图函数的名字。
+
+## 19.2 创建文章详细页面的URL
+在blog/urls.py文件中为我们的 post_tetail 视图函数创建一个URL。
+
+    from django.urls import path, include
+    from . import views
+
+    app_name = 'blog'
+
+    urlpatterns = [
+        path('', views.post_list, name='post_lists'),
+        path('post/<pk>', views.post_detail, name='post_detail'),
+    ]
+
+这意味着如果你键入 http://127.0.0.1:8000/post/1/ 到你的浏览器里，Django明白你在寻找一个叫做 post_detail 的视图，然后传递 pk 等于 1 到那个视图。pk 是 primary key （主键）的缩写。
+
+## 19.3 增加文章详细页面的视图
+打开 blog/views.py 并添加以下代码：
+
+    from django.shortcuts import render, get_object_or_404
+
+    def post_detail(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    return render(request, 'blog/post_detail.html', {'post': post})
+
+## 19.4 为文章详细页面增加模板
+我们将在blog/templates/blog 中创建一个文件，叫做 post_detail.html:
+
+    {% extends 'blog/base.html' %}
+
+    {% block content %}
+        <div class="post">
+            {% if post.published_date %}
+                <div class="date">
+                    {{ post.published_date }}
+                </div>
+            {% endif %}
+            <h1>{{ post.title }}</h1>
+            <p>{{ post.text|linebreaksbr }}</p>
+        </div>
+    {% endblock %}
+
