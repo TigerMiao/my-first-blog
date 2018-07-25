@@ -639,3 +639,138 @@ blog.views.post_detail 是我们想创建的 post_detail 视图函数的路径�
         </div>
     {% endblock %}
 
+## 19.5 部署
+
+* 上传代码到Github
+
+    git status
+    git add --all .
+    git status
+    git commit -m "Added view and template for detailed blog post as well as CSS for the site."
+    git push
+
+* 然后，在一个 PythonAnywhere 的 Bash 终端里运行
+
+    cd my-first-blog
+    source myvenv/bin/activate
+    git pull
+    python manage.py collectstatic
+
+* 最后，跳到 Web 标签页 并点击重新载入。
+
+# 20. Django表单
+在blog目录下创建文件 forms.py。
+
+    from django import forms
+    from .models import Post
+
+    class PostForm(forms.ModelForm):
+
+        class Meta:
+            model = Post
+            fields = ('title', 'text',)
+    
+表单的名字是PostForm，它继承自ModelForm。在 class Meta 中，告诉Django哪个模型会被用来创建这个表单（ mode = Post ）。
+
+## 20.1 指向页面表单的链接
+打开 blog/templates/blog/base.html 文件，添加一个链接到名为 page-header 的 div：
+
+    <a href="{% url 'post_new' %}" class="top-menu"><span class="glyphicon glyphicon-plus"></span></a>
+
+## 20.2 URL
+打开 blog/urls.py 然后添加一个新行：
+
+    url('post/new/', views.post_new, name='post_new')
+
+## 20.3 post_new视图
+打开 blog/views.py 文件，加入下列代码：
+
+    from .forms import PostForm
+
+    def post_new(request):
+    form = PostForm()
+    return render(request, 'blog/post_edit.html', {'form': form})
+
+## 20.4 模板
+我们需要在 blog/templates/blog 目录下创建一个文件 post_edit.html。
+
+    {% extends 'blog/base.html' %}
+
+    {% block content %}
+        <h1>New post</h1>
+        <form method="POST" class="post-form">{% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="save btn btn-default">Save</button>
+        </form>
+    {% endblock %}
+
+代码主要做了以下几件事情：
+
+* 使用 {{ form.as_p }}展示表单。
+* 使用 HTML 表单标签：`<form method="POST">...</form>`
+* 使用 HTML 标签创建 Save 按钮：`<button type="submit">Save</button>`
+* 最后在 <form ...> 标签后，我们需要加上 {% csrf_token %}。这个非常重要，因为他会让你的表单变得更安全。
+
+## 20.5 保存表单
+再次编辑 blog/views.py:
+
+    from django.shortcuts import redirect
+
+    def post_new(request):
+    if request.method == "POST":
+        form = PostForm(request.POST)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.published_date = timezone.now()
+            post.save()
+            return redirect('blog:post_detail', pk=post.pk)
+    else:
+        form = PostForm()
+    return render(request, 'blog/post_edit.html', {'form': form})
+
+## 20.6 编辑表单
+打开 blog/templates/blog/post_detail.html 并添加以下行：
+
+    <a class="btn btn-default" href="{% url 'blog:post_edit' pk=post.pk %}"><span class="glyphicon glyphicon-pencil"></span></a>
+
+在blog/urls.py里我们添加这行：
+
+    path('post/<pk>/edit/', views.post_edit, name='post_edit'),
+
+然后打开blog/views.py，并在文件的最后加入：
+
+    def post_edit(request, pk):
+        post = get_object_or_404(Post, pk=pk)
+        if request.method == "POST":
+            form = PostForm(request.POST, instance=post)
+            if form.is_valid():
+                post = form.save(commit=False)
+                post.author = request.user
+                post.published_date = timezone.now()
+                post.save()
+                return redirect('blog:post_detail', pk=post.pk)
+        else:
+            form = PostForm(instance=post)
+        return render(request, 'blog/post_edit.html', {'form': form})
+
+## 20.7 部署
+
+### 1. 首先，提交你的新代码，然后将它推送到 GitHub 上
+
+    $ git status
+    $ git add --all .
+    $ git status
+    $ git commit -m "Added views to create/edit blog post inside the site."
+    $ git push
+
+### 2. 然后，在一个 PythonAnywhere 的 Bash 终端里运行：
+
+    $ cd my-first-blog
+    $ source myvenv/bin/activate
+    (myvenv)$ git pull
+    [...]
+    (myvenv)$ python manage.py collectstatic
+    [...]
+
+### 3. 最后，跳到 Web 标签页 并点击重新载入.
